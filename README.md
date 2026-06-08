@@ -145,6 +145,10 @@ To check if there is anything left, enter the command
 
 ## Change history (recent changes only)
 
+8/6/26:
+ * Update README.md to include required Moodle security settings (allowed ports,
+   disallowed URLs).
+   
 18/10/24:
  * API key configuration can now be specified during build using Docker's "--secret" functionality (thanks @theLogicJB).
 
