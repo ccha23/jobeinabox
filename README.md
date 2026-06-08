@@ -101,24 +101,42 @@ If no API keys are provided the configuration remains untouched.
 
 ## Using jobeinabox
 
+### Initial sanity check
 Having started a jobeinabox container by either of the above methods, you
 can check it's running OK by browsing to
 
      http://[host_running_docker]:4000/jobe/index.php/restapi/languages
 
-and you should get a JSON-encoded list of the supported languages, namely
+and you should get a JSON-encoded list of the supported languages, something like
+(depending on OS version):
 
     [["c","7.3.0"],["cpp","7.3.0"],["java","10.0.2"],["nodejs","8.10.0"],["octave","4.2.2"],["pascal","3.0.4"],["php","7.2.7"],["python3","3.6.5"]]
+    
+### Running the test suite
 
 If you wish to run the test suite within the container, use the command
 
     sudo docker exec -t jobe /usr/bin/python3 /var/www/html/jobe/testsubmit.py
+    
+### Configuring Moodle to use JobeInABox
 
-To set your Moodle/CodeRunner plugin to use this dockerised Jobe server, set the Jobe server field in the CodeRunner admin settings (Site Administration > Plugins > Question types > CodeRunner) to
+To set your Moodle/CodeRunner plugin to use this dockerised Jobe server,
+set the Jobe server field in the CodeRunner admin settings (Site Administration > Plugins > Question types > CodeRunner) to
 
     [host_running_docker]:4000
 
 Do not put http:// at the start.
+
+In addition you will need to:
+
+1.  Add the port number 4000 to the cURL allowed ports list in the HTTP security
+    settings for the Moodle server (in Site administration > Security)
+    
+1.  If you're running JobeInABox on the same host as your Moodle server
+    (not recommended) you will have to additionally remove *localhost*
+    and *127.0.0.0/8* from the cURL blocked hosts list.
+    
+### Stopping JobeInABox
 
 To stop the running server, enter the command:
 
