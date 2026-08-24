@@ -32,6 +32,23 @@ You can then run your newly-built image with the command
 This will give you a jobe server running on port 4000, which can then be
 tested locally and used by Moodle as explained in the section "Using jobeinabox" below.
 
+### Building and releasing with `make`
+
+This repo ships a `Makefile` (in the same style as the DIVE jupyter notebooks
+repo) so the image can be built and versioned reproducibly. The image version
+lives in this public repo (`jobeinabox := jobeinabox^<version>`), so bump it to
+release a new tag:
+
+    make image-info.jobeinabox           # show the parsed image name/tag
+    make docker-build.jobeinabox^1.0.0   # build locally as jobeinabox:1.0.0
+    make docker-push.jobeinabox^1.0.0 registry=localhost:32000   # push to a registry
+    make image.jobeinabox^1.0.0 registry=localhost:32000         # build + push
+
+The registry is *not* hardcoded to any deployment-specific host: by default the
+build is local only, and `docker-push`/`image` use whatever `registry=` you pass
+(defaulting to the generic `localhost:32000`). Deployment tooling may override
+the registry (e.g. to a cluster-internal one) so that nodes can pull the image.
+
 ## Using the pre-built jobeinabox image on docker hub
 
 To run the pre-built Docker Hub image, just enter the command:
@@ -162,6 +179,18 @@ To check if there is anything left, enter the command
     with the latest jobe version and security updates.
 
 ## Change history (recent changes only)
+
+24/8/26:
+ * Upgrade base image from Ubuntu 24.04 to 26.04 (Python 3.14, GCC/G++ 15 with
+   C++23, PHP 8.5, Node 22, JDK 25, Octave 11).
+ * Fix the apache2 locale patch: the previous unanchored `sed` produced the
+   invalid locale `C.UTF-8.UTF-8` on 26.04, which made the JVM emit `?` instead
+   of UTF-8 accents. Now anchored + idempotent (`s/^export LANG=.*/.../`).
+ * Add a `Makefile` (jupyter-style) so the image can be built, tagged, and
+   pushed with `make`; the image version is tracked in this repo.
+ * Note: Octave 11's new `--version` string is not matched by Jobe's regex, so
+   the languages endpoint reports octave as "Unknown" (cosmetic; octave still
+   runs). See Jobe upstream `app/Libraries/OctaveTask.php`.
 
 8/6/26:
  * Update README.md to include required Moodle security settings (allowed ports,
