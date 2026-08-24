@@ -21,7 +21,7 @@
 # Syntax: IMAGE_NAME^IMAGE_VERSION[^BUILD_TARGET[^DOCKERFILE_SUFFIX]]
 #   -> docker tag  IMAGE_NAME:IMAGE_VERSION
 #   -> Dockerfile  Dockerfile[.DOCKERFILE_SUFFIX]   (in this repo's root)
-jobeinabox := jobeinabox^1.0.0
+jobeinabox := jobeinabox^1.0.1
 
 # Registries
 # ==========

@@ -26,6 +26,9 @@ ENV LANG=C.UTF-8
 COPY 000-jobe.conf /
 # Copy test script
 COPY container-test.sh /
+# Copy runtime tuning entrypoint (reads JOBE_MAX_USERS / JOBE_WAIT_TIMEOUT / JOBE_PYTHON_MEMMB)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Mount secrets
 # Set timezone
@@ -58,8 +61,11 @@ RUN --mount=type=secret,id=api_keys \
         php-mbstring \
         php-intl \
         python3 \
+        python3-numpy \
+        python3-pandas \
         python3-pip \
         python3-setuptools \
+        python3-sympy \
         pylint \
         sqlite3 \
         sudo \
@@ -88,6 +94,13 @@ RUN --mount=type=secret,id=api_keys \
         sed -i 's/$require_api_keys = false/$require_api_keys = true/' /var/www/html/jobe/app/Config/Jobe.php && \
         sed -i "s/'2AAA7A.*/$API_KEYS/" /var/www/html/jobe/app/Config/Jobe.php \
     ; fi && \
+    # Build with a MAXIMUM of 64 worker accounts (jobe00..jobe63). A course that
+    # needs fewer concurrent jobs lowers the active count at runtime via the
+    # JOBE_MAX_USERS env var (see entrypoint.sh) without a rebuild. wait_timeout
+    # raised to 120s so a quiz-end submission burst can queue instead of
+    # returning OverloadException (ungraded).
+    sed -i 's/^    public int \$jobe_max_users = .*/    public int $jobe_max_users = 64;/' /var/www/html/jobe/app/Config/Jobe.php && \
+    sed -i 's/^    public int \$jobe_wait_timeout = .*/    public int $jobe_wait_timeout = 120;/' /var/www/html/jobe/app/Config/Jobe.php && \
     /usr/bin/python3 /var/www/html/jobe/install --max_uid=500 && \
     chown -R ${APACHE_RUN_USER}:${APACHE_RUN_GROUP} /var/www/html && \
     apt-get -y autoremove --purge && \
@@ -104,5 +117,5 @@ EXPOSE 80
 HEALTHCHECK --interval=1m --timeout=2s \
     CMD /usr/bin/python3 /var/www/html/jobe/minimaltest.py || exit 1
 
-# Start apache
-CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+# Start apache (via entrypoint, which applies runtime Jobe limits from env vars)
+CMD ["/entrypoint.sh"]
