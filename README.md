@@ -58,17 +58,33 @@ To run the pre-built Docker Hub image, just enter the command:
 This will give you a jobe server running on port 4000, which can then be
 tested locally and used by Moodle as explained in the section "Using jobeinabox" below.
 
-## Setting the number of jobe users
+## Setting the number of jobe users (and other runtime limits)
 
-By default, Jobe will run up to 8 jobs simultaneously. This is usually a suitable
-value for 8-core systems but if you have more cores available you will probably
-want to raise this number. To do so, exec a shell in the container with a command of the form
+Since 1.0.1 the image is built with a **maximum of 64 worker accounts**
+(`jobe00`–`jobe63`), and the active limits are applied **at container start**
+by `entrypoint.sh` from environment variables — so a single image can serve
+courses of different sizes with no rebuild or manual editing.
 
-    docker exec -it jobe bash
+| Env var             | Meaning                                        | Range   | Default |
+|---------------------|------------------------------------------------|---------|---------|
+| `JOBE_MAX_USERS`    | active concurrent job slots                    | 1–64    | 64      |
+| `JOBE_WAIT_TIMEOUT` | seconds a job queues before `OverloadException`| 5–300   | 120     |
+| `JOBE_PYTHON_MEMMB` | per-job Python memory cap (runguard)           | 128–4000| 1500    |
 
- and then:
+Example: run with 48 active slots and a 120-second queue wait (survives a
+quiz-end submission burst instead of returning *OverloadException*, which would
+leave the quiz ungraded):
 
-    nano  /var/www/html/jobe/app/Config/Jobe.php
+    sudo docker run -d -p 4000:80 --name jobe \
+        -e JOBE_MAX_USERS=48 -e JOBE_WAIT_TIMEOUT=120 my/jobeinabox
+
+The entrypoint clamps any out-of-range or non-numeric value to the default,
+so a typo can't break the server. The build-time defaults live in the
+`Dockerfile` (`jobe_max_users`, `jobe_wait_timeout`) and
+`app/Task/Python3Task.php` (`memorylimit`); the env vars only override them at
+startup.
+
+Before 1.0.1 you had to edit `Jobe.php` inside the container by hand:
 
 Find the line
 
@@ -179,6 +195,22 @@ To check if there is anything left, enter the command
     with the latest jobe version and security updates.
 
 ## Change history (recent changes only)
+
+24/8/26 — 1.0.1:
+ * Build with 64 worker accounts (jobe00–jobe63) so one image serves courses of
+   different class sizes.
+ * New `entrypoint.sh` applies runtime limits at container start from env vars
+   (clamped to safe ranges; a bad value can't break the server):
+   - `JOBE_MAX_USERS` (1–64, default 64)
+   - `JOBE_WAIT_TIMEOUT` (5–300s, default 120) — raised from the previous 10s
+     default so a quiz-end submission burst queues instead of returning
+     `OverloadException` (which leaves the quiz ungraded).
+   - `JOBE_PYTHON_MEMMB` (128–4000, default 1500) — per-job Python memory cap.
+ * Add python3-numpy, python3-pandas, python3-sympy (memory is still capped per
+   job by runguard, so they can't starve the host).
+ * Add `JOBE_WAIT_TIMEOUT` / per-course env override via Helm chart values —
+   no rebuild needed to change a course's concurrency.
+ * Bump image tag to 1.0.1.
 
 24/8/26:
  * Upgrade base image from Ubuntu 24.04 to 26.04 (Python 3.14, GCC/G++ 15 with
